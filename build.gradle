@@ -1,0 +1,76 @@
+plugins {
+    id "java"
+    id "maven-publish"
+    id "com.google.protobuf" version "0.8.3"
+}
+
+sourceCompatibility = 1.8
+
+repositories {
+    jcenter()
+}
+
+configurations.all {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+dependencies {
+    implementation 'com.google.protobuf:protobuf-java:3.4.0'
+}
+
+protobuf {
+    generatedFilesBaseDir = "$buildDir/gen-src"
+
+    // Configure the protoc executable
+    protoc {
+        // Download from repositories
+        artifact = 'com.google.protobuf:protoc:3.4.0'
+    }
+
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java { }
+                python { }
+            }
+        }
+    }
+}
+
+def jarManifest = {
+    attributes 'Built-By': System.properties['user.name'] + '@' + InetAddress.getLocalHost().getHostName()
+    attributes 'Build-Id': project.version
+    attributes 'Built-On': InetAddress.getLocalHost().getHostName()
+    attributes 'Build-Os': org.gradle.internal.os.OperatingSystem.current().getName()
+    attributes 'Build-Time': new Date().format("yyyy-MM-dd hh:mm z")
+    attributes 'Implementation-Title': project.name
+    attributes 'Implementation-Vendor': 'Example, Inc'
+    attributes 'Implementation-Vendor-Id': project.group
+    attributes 'Implementation-Version': project.version
+    attributes 'System-Version': org.gradle.internal.os.OperatingSystem.current().getVersion()
+}
+
+jar {
+    exclude '**/*.proto'
+    manifest jarManifest
+}
+
+task protoJar(type: Jar) {
+    classifier 'proto'
+    from sourceSets.main.proto
+    include '**/*.proto'
+    manifest jarManifest
+    manifest.attributes 'Extension-Name': classifier
+}
+
+task sourceJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from protobuf.generatedFilesBaseDir + '/main/java'
+    manifest jarManifest
+    manifest.attributes 'Extension-Name': classifier
+}
+
+artifacts {
+    archives protoJar
+    archives sourceJar
+}
